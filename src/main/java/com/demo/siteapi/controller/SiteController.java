@@ -3,7 +3,7 @@ package com.demo.siteapi.controller;
 import com.demo.siteapi.dto.CreateSiteRequest;
 import com.demo.siteapi.dto.UpdateSiteRequest;
 import com.demo.siteapi.model.SiteAssessment;
-import com.demo.siteapi.repository.SiteAssessmentRepository;
+import com.demo.siteapi.service.SiteAssessmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -15,91 +15,110 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 /**
- * REST controller for managing site assessments.
- * All endpoints under /api/sites require authentication.
+ * REST controller that exposes site assessment operations.
+ * <p>
+ * All endpoints under {@code /api/sites} require HTTP Basic
+ * authentication (configured in {@code SecurityConfig}).
+ * The controller is a thin adapter: it delegates business
+ * logic to {@link SiteAssessmentService} and handles HTTP
+ * concerns (status codes, location headers, logging).
  */
 @RestController
 @RequestMapping("/api/sites")
 public class SiteController {
 
     private static final Logger log = LoggerFactory.getLogger(SiteController.class);
-    private final SiteAssessmentRepository repository;
+    private final SiteAssessmentService service;
 
-    public SiteController(SiteAssessmentRepository repository) {
-        this.repository = repository;
+    public SiteController(SiteAssessmentService service) {
+        this.service = service;
     }
 
+    /**
+     * Lists every site assessment.
+     *
+     * @return 200 OK with a JSON array
+     */
     @GetMapping
     @Operation(summary = "List all site assessments")
     public List<SiteAssessment> getAll() {
         log.info("Fetching all site assessments");
-        return repository.findAll();
+        return service.findAll();
     }
 
+    /**
+     * Retrieves a single assessment by ID.
+     *
+     * @param id the UUID of the assessment
+     * @return 200 OK with the assessment, or 404
+     */
     @GetMapping("/{id}")
     @Operation(summary = "Get a site assessment by ID")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Found"),
-        @ApiResponse(responseCode = "404", description = "Not found")
+            @ApiResponse(responseCode = "200", description = "Found"),
+            @ApiResponse(responseCode = "404", description = "Not found")
     })
     public SiteAssessment getById(@PathVariable UUID id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Site not found: " + id));
+        return service.findById(id);
     }
 
+    /**
+     * Creates a new assessment.
+     *
+     * @param request validated creation payload
+     * @return 201 Created with a {@code Location} header and the new resource
+     */
     @PostMapping
     @Operation(summary = "Create a new site assessment")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Created"),
-        @ApiResponse(responseCode = "400", description = "Invalid input")
+            @ApiResponse(responseCode = "201", description = "Created"),
+            @ApiResponse(responseCode = "400", description = "Invalid input")
     })
     public ResponseEntity<SiteAssessment> create(@Valid @RequestBody CreateSiteRequest request) {
         log.info("Creating site: {}", request.name());
-        SiteAssessment site = new SiteAssessment(
-                request.name(), request.latitude(), request.longitude(),
-                request.basin(), request.estimatedVolume(),
-                request.confidence(), request.status()
-        );
-        SiteAssessment saved = repository.save(site);
+        SiteAssessment saved = service.create(request);
         return ResponseEntity.created(URI.create("/api/sites/" + saved.getId())).body(saved);
     }
 
+    /**
+     * Updates an existing assessment with the supplied fields.
+     * <p>
+     * Only non-null fields are applied; absent fields keep their
+     * existing values.
+     *
+     * @param id      the UUID of the assessment to update
+     * @param request the update payload
+     * @return 200 OK with the updated assessment, or 404
+     */
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing site assessment")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Updated"),
-        @ApiResponse(responseCode = "404", description = "Not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid input")
+            @ApiResponse(responseCode = "200", description = "Updated"),
+            @ApiResponse(responseCode = "404", description = "Not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid input")
     })
     public SiteAssessment update(@PathVariable UUID id, @Valid @RequestBody UpdateSiteRequest request) {
-        SiteAssessment existing = repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Site not found: " + id));
-        if (request.name() != null) existing.setName(request.name());
-        if (request.latitude() != null) existing.setLatitude(request.latitude());
-        if (request.longitude() != null) existing.setLongitude(request.longitude());
-        if (request.basin() != null) existing.setBasin(request.basin());
-        if (request.estimatedVolume() != null) existing.setEstimatedVolume(request.estimatedVolume());
-        if (request.confidence() != null) existing.setConfidence(request.confidence());
-        if (request.status() != null) existing.setStatus(request.status());
         log.info("Updating site {}", id);
-        return repository.save(existing);
+        return service.update(id, request);
     }
 
+    /**
+     * Deletes an assessment.
+     *
+     * @param id the UUID of the assessment to delete
+     * @return 204 No Content, or 404
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a site assessment")
     @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "Deleted"),
-        @ApiResponse(responseCode = "404", description = "Not found")
+            @ApiResponse(responseCode = "204", description = "Deleted"),
+            @ApiResponse(responseCode = "404", description = "Not found")
     })
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        if (!repository.existsById(id)) {
-            throw new NoSuchElementException("Site not found: " + id);
-        }
-        repository.deleteById(id);
+        service.delete(id);
         log.info("Deleted site {}", id);
         return ResponseEntity.noContent().build();
     }
