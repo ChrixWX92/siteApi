@@ -1,20 +1,23 @@
 package com.demo.siteapi.controller;
 
+import com.demo.siteapi.config.SecurityConfig;
 import com.demo.siteapi.dto.CreateSiteRequest;
 import com.demo.siteapi.model.Confidence;
 import com.demo.siteapi.model.SiteAssessment;
 import com.demo.siteapi.model.Status;
-import com.demo.siteapi.repository.SiteAssessmentRepository;
+import com.demo.siteapi.service.SiteAssessmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -23,19 +26,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(SiteController.class)
+@Import(SecurityConfig.class)
 class SiteControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private SiteAssessmentRepository repository;
+    private SiteAssessmentService service;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     @WithMockUser
     void getAll_shouldReturnOk() throws Exception {
+        when(service.findAll()).thenReturn(List.of());
         mockMvc.perform(get("/api/sites"))
                 .andExpect(status().isOk());
     }
@@ -47,14 +52,12 @@ class SiteControllerTest {
                 "Test Site", 30.0, 40.0, "Permian",
                 BigDecimal.valueOf(100), Confidence.MEDIUM, Status.DRAFT
         );
-
         SiteAssessment saved = new SiteAssessment(
                 "Test Site", 30.0, 40.0, "Permian",
                 BigDecimal.valueOf(100), Confidence.MEDIUM, Status.DRAFT
         );
         saved.setId(UUID.randomUUID());
-
-        when(repository.save(any())).thenReturn(saved);
+        when(service.create(any())).thenReturn(saved);
 
         mockMvc.perform(post("/api/sites")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -70,7 +73,6 @@ class SiteControllerTest {
                 "", 30.0, 40.0, "Permian",
                 BigDecimal.valueOf(100), Confidence.MEDIUM, Status.DRAFT
         );
-
         mockMvc.perform(post("/api/sites")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
