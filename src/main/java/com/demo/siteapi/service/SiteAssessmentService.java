@@ -4,6 +4,7 @@ import com.demo.siteapi.dto.CreateSiteRequest;
 import com.demo.siteapi.dto.UpdateSiteRequest;
 import com.demo.siteapi.model.SiteAssessment;
 import com.demo.siteapi.repository.SiteAssessmentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class SiteAssessmentService {
 
     private final SiteAssessmentRepository repository;
 
+    @Autowired
     public SiteAssessmentService(SiteAssessmentRepository repository) {
         this.repository = repository;
     }

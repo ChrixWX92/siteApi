@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +34,7 @@ public class SiteController {
     private static final Logger log = LoggerFactory.getLogger(SiteController.class);
     private final SiteAssessmentService service;
 
+    @Autowired
     public SiteController(SiteAssessmentService service) {
         this.service = service;
     }
